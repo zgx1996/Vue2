@@ -1,119 +1,77 @@
-const ncname = `[a-zA-Z_][\\w\\-\\.]*`
-// ?: 在分组匹配中可以产生无编号的分组
-const qnameCapture = `((?:${ncname}\\:)?${ncname})`
-
-const startTagOpen = new RegExp(`^<${qnameCapture}`)
-const endTag = new RegExp(`^<\\/${qnameCapture}[^>]*>`)
-const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
-const startTagClose = /^\s*(\/?)>/
-const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g
+import {
+  defaultTagRE,
+  ELEMENT_TYPE,
+  parseHtml,
+  TEXT_TYPE
+} from "./parse"
 
 // 对模板进行编译
 export function compileToFunction(template) {
   //1. 将template转化成ast语法树
   const ast = parseHtml(template)
   //2. 生成render方法
+  console.log('ast', ast)
+  const functionStr = codegen(ast)
+  console.log(functionStr)
   return () => {}
 }
 
-function createASTElement(tagName, attrs, children, parent, text) {
-  return { tagName, attrs, children, parent, text }
+function gen(node) {
+  if (node.type === ELEMENT_TYPE) {
+    return codegen(node)
+  } else if (node.type === TEXT_TYPE) {
+    const text = node.text
+    if (!defaultTagRE.test(text)) {
+      return `_v(${JSON.stringify(text)})`
+    } else {
+      defaultTagRE.lastIndex = 0
+      let lastIndex = 0
+      let textExec = null
+      const tokens = []
+      while (textExec = defaultTagRE.exec(text)) {
+        const pureText = text.substring(lastIndex, defaultTagRE.lastIndex - textExec[0].length)
+        lastIndex = defaultTagRE.lastIndex
+        if (pureText.trim()) {
+          tokens.push(`_s(${JSON.stringify(pureText.trim())})`)
+        }
+        tokens.push(`_c(${textExec[1]})`)
+      }
+      if (lastIndex < text.length) {
+        const rest = text.substring(lastIndex, text.length)
+        if (rest.trim()) {
+          tokens.push(JSON.stringify(rest.trim()))
+        }
+      }
+      return `_v(${tokens.join('+')})`
+    }
+  }
 }
 
-function parseHtml(html) {
-  const stack = []
-  let currentNode = null
-  let root = null
-  function start(tagName, attrs) {
-    const element = createASTElement(tagName, attrs)
-    if (!element.children) {
-      element.children = []
-    }
-    if (root == null) {
-      root = element
-      element.parent = null
+function genProps(attrs) {
+  let str = ''
+  attrs.forEach(attr => {
+    const name = attr.name
+    if (name === 'style') {
+      let style = attr.value
+      let styleStr = ''
+      style.forEach(styleItem => {
+        styleStr += styleItem.name + ':' + JSON.stringify(styleItem.value) + ','
+      })
+      styleStr = styleStr.substring(0, styleStr.length - 1)
+      str += name + ':' + "{" + styleStr + "}" + ","
     } else {
-      currentNode.children.push(element)
-      element.parent = currentNode
+      str += name + ':' + JSON.stringify(attr.value) + ','
     }
-    stack.push(element)
-    currentNode = element
-    console.log('开始', tagName)
-  }
-  function chars(text) {
-    if (!text.trim()) return
-    const element = createASTElement(undefined, undefined, undefined, undefined, text)
-    element.parent = currentNode
-    currentNode.children.push(element)
-    console.log('文本', text)
-  }
-  function end(tagName) {
-    console.log('结束', tagName)
-    stack.pop()
-    currentNode = stack[stack.length - 1]
-  }
+  })
+  return `{${str.substring(0,str.length - 1)}}`
+}
 
-  function advance(step) {
-    html = html.substring(step)
-  }
-  function parseStartTag() {
-    const start = html.match(startTagOpen)
-    if (start) {
-      const match = {
-        tagName: start[1],
-        attrs: []
-      }
-      advance(start[0].length)
-      let end, attr
-      while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
-        const name = attr[1]
-        let value = attr[3] || attr[4] || attr[5]
-        if (name === 'style') {
-          const styleItems = value.split(';')
-          value = []
-          styleItems?.forEach((styleItem) => {
-            const [name, styleItemValue] = styleItem.split(':')
-            const styleItemValueTrim = styleItemValue.trim()
-            value.push({ name, value: styleItemValueTrim })
-          })
-        }
-        match.attrs.push({
-          name,
-          value
-        })
-        advance(attr[0].length)
-      }
-      if (end) {
-        advance(end[0].length)
-      }
-      console.log('match', match)
-      return match
-    }
-    return false
-  }
-  while (html) {
-    const textEnd = html.indexOf('<')
-    if (textEnd === 0) {
-      const startTagMatch = parseStartTag()
-      if (startTagMatch) {
-        start(startTagMatch.tagName, startTagMatch.attrs)
-        continue
-      }
-      const endTagMatch = html.match(endTag)
-      if (endTagMatch) {
-        end(endTagMatch[1])
-        advance(endTagMatch[0].length)
-        continue
-      }
-    }
-    if (textEnd > 0) {
-      let text = html.substring(0, textEnd)
-      if (text) {
-        chars(text)
-        advance(text.length)
-      }
-    }
-  }
-  console.log('html', html)
-  console.log('root', root)
+function genChild(node) {
+  const children = node.children
+  return children && children.map(item => gen(item)).join(',')
+}
+
+function codegen(ast) {
+  const children = genChild(ast)
+  return `_c('${ast.tagName}',${ast.attrs?.length ? genProps(ast.attrs): null},${ast.children.length ? children:null })`
 }

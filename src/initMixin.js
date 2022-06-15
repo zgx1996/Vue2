@@ -1,5 +1,9 @@
-import { compileToFunction } from './compiler/index.js'
-import { initState } from './state'
+import {
+  compileToFunction
+} from './compiler/index.js'
+import {
+  initState
+} from './state'
 
 export function initMixin(Vue) {
   Vue.prototype._init = function (options) {
@@ -13,6 +17,7 @@ export function initMixin(Vue) {
 
   Vue.prototype.$mount = function (el) {
     const vm = this
+    debugger
     el = document.querySelector(el)
     const ops = vm.$options
     if (!ops.render) {
