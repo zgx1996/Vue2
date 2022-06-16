@@ -32,7 +32,7 @@ export function defineReactive(data, key, value) {
     },
     set: function (newValue) {
       observe(newValue)
-      data[key] = newValue
+      value = newValue
     }
   })
 }

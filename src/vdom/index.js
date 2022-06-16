@@ -8,9 +8,17 @@ export function createElementVNode(vm, tagName, data, ...children) {
 }
 
 export function createTextVNode(vm, text) {
+  console.log('text', text)
   return vnode(vm, undefined, undefined, undefined, undefined, text)
 }
 
 function vnode(vm, tag, key, data, children, text) {
-  return { vm, tag, key, data, children, text }
+  return {
+    vm,
+    tag,
+    key,
+    data,
+    children,
+    text
+  }
 }
