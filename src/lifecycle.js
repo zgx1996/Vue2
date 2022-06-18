@@ -1,19 +1,19 @@
-import {
-  createElementVNode,
-  createTextVNode
-} from './vdom/index.js'
+import Watcher from './observe/watcher.js'
+import { createElementVNode, createTextVNode } from './vdom/index.js'
 export function mountComponent(vm, el) {
   vm.$el = el
-  vm._update(vm._render())
+  const updateComponent = () => vm._update(vm._render())
+  const watch = new Watcher(vm, updateComponent, true)
+  console.log('watch', watch)
 }
 
 function patchProps(el, attrs) {
   if (!attrs) return
   console.log('attrs', attrs)
-  Object.keys(attrs).forEach(key => {
+  Object.keys(attrs).forEach((key) => {
     if (key === 'style') {
       const style = attrs[key]
-      Object.keys(style).forEach(styleKey => {
+      Object.keys(style).forEach((styleKey) => {
         el.style[styleKey] = style[styleKey]
       })
     } else {
@@ -22,20 +22,15 @@ function patchProps(el, attrs) {
   })
 }
 
-
 function createEle(vnode) {
-  const {
-    tag,
-    text,
-    children,
-    data
-  } = vnode
+  console.log('createEle', vnode)
+  const { tag, text, children, data } = vnode
   if (typeof tag === 'string') {
     vnode.el = document.createElement(tag)
     patchProps(vnode.el, data)
     if (children) {
-      children.forEach(item => {
-        vnode.el.appendChild(createEle(item))
+      children.forEach((item) => {
+        item && vnode.el.appendChild(createEle(item))
       })
     }
   } else {
