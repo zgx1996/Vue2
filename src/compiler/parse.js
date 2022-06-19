@@ -96,7 +96,6 @@ export function parseHtml(html) {
     return false
   }
   while (html) {
-    debugger
     const textEnd = html.indexOf('<')
     if (textEnd === 0) {
       const startTagMatch = parseStartTag()

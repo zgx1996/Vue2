@@ -1,15 +1,16 @@
 import Watcher from './observe/watcher.js'
-import { createElementVNode, createTextVNode } from './vdom/index.js'
+import {
+  createElementVNode,
+  createTextVNode
+} from './vdom/index.js'
 export function mountComponent(vm, el) {
   vm.$el = el
   const updateComponent = () => vm._update(vm._render())
   const watch = new Watcher(vm, updateComponent, true)
-  console.log('watch', watch)
 }
 
 function patchProps(el, attrs) {
   if (!attrs) return
-  console.log('attrs', attrs)
   Object.keys(attrs).forEach((key) => {
     if (key === 'style') {
       const style = attrs[key]
@@ -24,7 +25,12 @@ function patchProps(el, attrs) {
 
 function createEle(vnode) {
   console.log('createEle', vnode)
-  const { tag, text, children, data } = vnode
+  const {
+    tag,
+    text,
+    children,
+    data
+  } = vnode
   if (typeof tag === 'string') {
     vnode.el = document.createElement(tag)
     patchProps(vnode.el, data)
@@ -77,5 +83,12 @@ export function initLifecycle(Vue) {
 
   Vue.prototype._v = function () {
     return createTextVNode(this, ...arguments)
+  }
+}
+
+export function callHook(vm, hook) {
+  const handlers = vm.$options[hook]
+  if (handlers) {
+    handlers.forEach(handler => handler.call(vm))
   }
 }

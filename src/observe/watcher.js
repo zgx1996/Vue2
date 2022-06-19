@@ -25,7 +25,68 @@ class Watcher {
     }
   }
   update() {
+    queueWatcher(this)
+  }
+  run() {
     this.get()
+  }
+}
+
+let queue = []
+let has = {}
+let pending = false
+
+function flushSchedulerQueue() {
+  let flushQueue = queue.slice(0)
+  queue = []
+  has = {}
+  pending = false
+  flushQueue.forEach(watcher => watcher.run())
+}
+
+function queueWatcher(watcher) {
+  const id = watcher.id
+  if (!has[id]) {
+    queue.push(watcher)
+    has[id] = true
+    if (!pending) {
+      nextTick(flushSchedulerQueue)
+      pending = true
+    }
+  }
+}
+
+function flushCallback() {
+  let flushCbs = callbacks.slice(0)
+  waiting = false
+  callbacks = []
+  flushCbs.forEach(cb => cb())
+}
+
+function timerFunc() {
+  if (Promise) {
+    Promise.resolve().then(flushCallback)
+  } else if (MutationObserver) {
+    const observe = new MutationObserver(flushCallback)
+    const textNode = Document.createTextNode(1)
+    observe.observe(textNode, {
+      characterData: true
+    })
+    textNode.textContent = 2
+  } else if (setImmediate) {
+    setImmediate(flushCallback)
+  } else {
+    setTimeout(flushCallback, 0)
+  }
+}
+
+let callbacks = []
+let waiting = false
+export function nextTick(cb) {
+  callbacks.push(cb)
+  if (!waiting) {
+    timerFunc()
+    waiting = true
   }
 }
 

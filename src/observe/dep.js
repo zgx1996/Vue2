@@ -8,7 +8,6 @@ class Dep {
     this.subs.push(watcher)
   }
   depend() {
-    console.log('Dep.target', Dep.target)
     Dep.target.addDep(this)
   }
   notify() {
